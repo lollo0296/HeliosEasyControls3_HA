@@ -24,6 +24,8 @@ class WriteRejected(HomeAssistantError):
 # ---------------------------------------------------------------------------
 
 # General info (buf = reg)
+_BUF_SW_VERSION_FIRST = 2
+_SW_VERSION_WORDS = 9
 _BUF_SERIAL_MSW = 14
 _BUF_SERIAL_LSW = 15
 _BUF_MACHINE_TYPE = 16
@@ -254,6 +256,22 @@ def _low(data: bytes, offset: int) -> int:
     return data[offset * 2 + 1]
 
 
+def _firmware_version(data: bytes) -> str | None:
+    """Decode the byte-swapped version components used by the device web UI."""
+    end = (_BUF_SW_VERSION_FIRST + _SW_VERSION_WORDS) * 2
+    if len(data) < end:
+        return None
+    parts = [
+        int.from_bytes(data[offset * 2 : offset * 2 + 2], "little")
+        for offset in range(_BUF_SW_VERSION_FIRST, end // 2)
+    ]
+    if 0xFFFF in parts or not any(parts):
+        return None
+    while parts[0] == 0:
+        parts.pop(0)
+    return ".".join(str(part) for part in parts)
+
+
 def _kelvin_word_to_celsius(data: bytes, offset: int) -> float:
     return round(_word(data, offset) / 100 - 273.15, 1)
 
@@ -295,6 +313,7 @@ class EasyControls3Instance:
         self._url: str = "ws://" + url + ":80"
         self._deviceModel: str | None = None
         self._deviceType: str | None = None
+        self._firmwareVersion: str | None = None
         self._SerialNR: int | None = None
         self._instanceState: KWLState | None = None
         self._CurrentFanSpeed: int | None = None
@@ -468,6 +487,7 @@ class EasyControls3Instance:
         self._parse_extended(data)
 
     def _parse_device_info(self, data: bytes) -> None:
+        self._firmwareVersion = _firmware_version(data)
         self._deviceModel = deviceInfo["device_model_data"][
             _low(data, _BUF_MACHINE_MODEL)
         ]
@@ -923,6 +943,10 @@ class EasyControls3Instance:
     @property
     def deviceType(self) -> str | None:
         return self._deviceType
+
+    @property
+    def firmwareVersion(self) -> str | None:
+        return self._firmwareVersion
 
     @property
     def serialNR(self) -> int | None:
