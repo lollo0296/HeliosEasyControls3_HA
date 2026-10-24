@@ -88,6 +88,7 @@ _BUF_EXTRA_EXTR_FAN = 196
 _BUF_EXTRA_SUPP_FAN = 197
 _BUF_EXTRA_TIME = 198
 _BUF_INDIVIDUAL_AIR_TEMP = 199
+_BUF_CF_FAN_SPEED_UNIT = 200
 _BUF_RH_CTRL_AWAY = 201
 _BUF_CO2_CTRL_AWAY = 202
 _BUF_AWAY_SPEED = 203
@@ -390,6 +391,7 @@ class EasyControls3Instance:
 
         # Constant flow
         self._cfBaseAirflow: dict[str, int | None] = {}
+        self._cfFanSpeedUnit: int | None = None
         self._measuredSupply: int | None = None
         self._measuredExtract: int | None = None
         self._cfLimiterActive: bool | None = None
@@ -543,6 +545,7 @@ class EasyControls3Instance:
         self._ioExtraHeater = bool(_low(data, _BUF_IO_EXTRA_HEATER))
 
     def _parse_settings(self, data: bytes) -> None:
+        self._cfFanSpeedUnit = _word(data, _BUF_CF_FAN_SPEED_UNIT)
         self._supplyHeatingAdjustMode = _low(data, _BUF_SUPPLY_HEATING_MODE)
         self._individualExtractFanSpeed = _low(data, _BUF_INDIVIDUAL_EXTR_FAN)
         self._individualSupplyFanSpeed = _low(data, _BUF_INDIVIDUAL_SUPP_FAN)
@@ -1262,6 +1265,10 @@ class EasyControls3Instance:
 
     def cfBaseAirflow(self, key: str) -> int | None:
         return self._cfBaseAirflow.get(key)
+
+    @property
+    def cfFanSpeedUnit(self) -> int | None:
+        return self._cfFanSpeedUnit
 
     @property
     def MeasuredSupply(self) -> int | None:
