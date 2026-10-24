@@ -672,8 +672,21 @@ class EasyControls3Instance:
                 (_REG_BOOST_TIMER, duration), (_REG_INDIVIDUAL_TIMER, 0)
             )
         elif wantedKWLState is KWLState.Individual:
+            configured_duration = self._individualModeDuration
+            if (
+                not isinstance(configured_duration, datetime.time)
+                or configured_duration.second
+                or configured_duration.microsecond
+                or configured_duration.tzinfo is not None
+                or (configured_duration.hour == 0 and configured_duration.minute == 0)
+            ):
+                raise HomeAssistantError(
+                    "Individual mode requires a configured duration in whole, "
+                    "positive minutes"
+                )
+            duration = configured_duration.hour * 60 + configured_duration.minute
             cmd = self._build_write_command(
-                (_REG_BOOST_TIMER, 0), (_REG_INDIVIDUAL_TIMER, 0x96)
+                (_REG_BOOST_TIMER, 0), (_REG_INDIVIDUAL_TIMER, duration)
             )
         else:
             raise TypeError("wantedKWLState must be an instance of KWLState Enum")

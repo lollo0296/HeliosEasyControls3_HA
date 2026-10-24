@@ -39,6 +39,7 @@ jobs:
       - run: pip install ruff==0.16.4 mypy==2.3.1 homeassistant "websockets>=16.0" types-python-dateutil pip-audit
       - run: ruff check .
       - run: ruff format --check .
+      - run: python -m unittest discover -s tests -v
       - run: mypy custom_components/
       - name: pip-audit (manifest.json requirements)
         run: |
