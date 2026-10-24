@@ -41,8 +41,19 @@ All entities belong to a single HA device. Within the device card:
 |---|---|
 | Last / Next Filter Change | Dates |
 | Filter Remaining Days | Days until filter change due |
-| Total Uptime Years / Hours | Cumulative device runtime |
+| Uptime Years Component / Uptime Hours Component | The two components of device runtime; read together, not as two independent lifetime totals |
 | Current Uptime Hours | Runtime since last restart |
+
+The years and hours components describe one device runtime. For example, values
+of 4 years and 5559 hours mean the two reported components, not a lifetime total
+of 5559 hours. The firmware UI displays the pair as years plus whole days derived
+from the hours component. No year-to-hours conversion is assumed here.
+
+The clarified names retain the existing unique IDs, values, units and state
+classes, so this change does not recreate entities or migrate recorded statistics.
+Existing user-customized names remain unchanged. Historical statistics are not
+recalculated; the device's rollover contract would need separate verification
+before changing accumulation behavior.
 | External RH Sensor Count | Number of connected external RH sensors |
 | CO2 Sensor Count | Number of connected CO2 sensors |
 | VOC Sensor Count | Number of connected VOC sensors |

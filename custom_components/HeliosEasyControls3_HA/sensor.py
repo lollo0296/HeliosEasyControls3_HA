@@ -469,7 +469,7 @@ class TotalUptimeYearsSensor(EasyControls3BaseEntity, SensorEntity):
     def __init__(self, coordinator: EasyControls3Coordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{self._device.serialNR}_TotalUptimeYears"
-        self._attr_name = "Total Uptime Years"
+        self._attr_name = "Uptime Years Component"
 
     @property
     def native_value(self) -> int | None:
@@ -486,7 +486,7 @@ class TotalUptimeHoursSensor(EasyControls3BaseEntity, SensorEntity):
     def __init__(self, coordinator: EasyControls3Coordinator) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{self._device.serialNR}_TotalUptimeHours"
-        self._attr_name = "Total Uptime Hours"
+        self._attr_name = "Uptime Hours Component"
 
     @property
     def native_value(self) -> int | None:
