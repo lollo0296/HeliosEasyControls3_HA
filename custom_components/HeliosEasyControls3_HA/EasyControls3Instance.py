@@ -2,12 +2,14 @@
 import asyncio
 import datetime
 import logging
+from collections.abc import Awaitable, Callable
 from typing import cast
 
 from dateutil.relativedelta import relativedelta
 from homeassistant.exceptions import HomeAssistantError
 from websockets.asyncio.client import connect
 
+from .cf_units import supports_cf_units
 from .deviceList import deviceInfo
 from .KWLStates import CellState, KWLState
 
@@ -291,7 +293,9 @@ def _find_extended_start(data: bytes) -> int | None:
 
 
 class EasyControls3Instance:
-    def __init__(self, url: str) -> None:
+    def __init__(
+        self, url: str, bundle_loader: Callable[[], Awaitable[str]] | None = None
+    ) -> None:
         self._lock = asyncio.Lock()
         self._url: str = "ws://" + url + ":80"
         self._deviceModel: str | None = None
@@ -392,6 +396,9 @@ class EasyControls3Instance:
         # Constant flow
         self._cfBaseAirflow: dict[str, int | None] = {}
         self._cfFanSpeedUnit: int | None = None
+        self._bundle_loader = bundle_loader
+        self._cf_unit_mapping = False
+        self._cf_mapping_version: bytes | None = None
         self._measuredSupply: int | None = None
         self._measuredExtract: int | None = None
         self._cfLimiterActive: bool | None = None
@@ -458,7 +465,37 @@ class EasyControls3Instance:
 
     async def readCurrentData(self) -> None:
         response = await self._exchangeData(_READ_REQUEST)
+        await self._refresh_cf_unit_mapping(response)
         self._parseData(response)
+
+    async def _refresh_cf_unit_mapping(self, data: bytes) -> None:
+        """Cache bundle recognition per firmware identity, never by a version threshold."""
+        version = data[4:22]
+        if (
+            len(version) != 18
+            or not any(version)
+            or any(
+                version[index : index + 2] == b"\xff\xff" for index in range(0, 18, 2)
+            )
+        ):
+            self._cf_unit_mapping = False
+            self._cf_mapping_version = None
+            self._cfFanSpeedUnit = None
+            return
+        if version == self._cf_mapping_version:
+            return
+        self._cf_unit_mapping = False
+        self._cfFanSpeedUnit = None
+        self._cf_mapping_version = version
+        if self._bundle_loader is None:
+            return
+        try:
+            bundle = await self._bundle_loader()
+            self._cf_unit_mapping = await asyncio.to_thread(supports_cf_units, bundle)
+        except Exception:  # noqa: BLE001 -- optional loader must not break data updates
+            # Exception text may contain the private device address. Metadata failure
+            # must not prevent the ordinary register refresh or expose that address.
+            LOGGER.debug("CF unit mapping unavailable; reload to retry")
 
     def _parseData(self, data: bytes) -> None:
         self._parse_device_info(data)
@@ -545,7 +582,9 @@ class EasyControls3Instance:
         self._ioExtraHeater = bool(_low(data, _BUF_IO_EXTRA_HEATER))
 
     def _parse_settings(self, data: bytes) -> None:
-        self._cfFanSpeedUnit = _word(data, _BUF_CF_FAN_SPEED_UNIT)
+        self._cfFanSpeedUnit = (
+            _word(data, _BUF_CF_FAN_SPEED_UNIT) if self._cf_unit_mapping else None
+        )
         self._supplyHeatingAdjustMode = _low(data, _BUF_SUPPLY_HEATING_MODE)
         self._individualExtractFanSpeed = _low(data, _BUF_INDIVIDUAL_EXTR_FAN)
         self._individualSupplyFanSpeed = _low(data, _BUF_INDIVIDUAL_SUPP_FAN)

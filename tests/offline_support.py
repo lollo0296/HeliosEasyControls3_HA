@@ -28,6 +28,9 @@ def load_modules(*names):
     ha_modules = {
         "homeassistant.config_entries": {"ConfigEntry": object},
         "homeassistant.core": {"HomeAssistant": object},
+        "homeassistant.helpers.aiohttp_client": {
+            "async_get_clientsession": lambda _: None
+        },
         "homeassistant.exceptions": {"HomeAssistantError": Exception},
         "homeassistant.helpers.entity": {
             "DeviceInfo": dict,

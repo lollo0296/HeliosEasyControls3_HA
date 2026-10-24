@@ -7,6 +7,7 @@ from datetime import timedelta
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -14,6 +15,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
+from .cf_units import fetch_bundle
 from .const import DOMAIN
 from .EasyControls3Instance import EasyControls3Instance
 
@@ -35,7 +37,10 @@ SCAN_INTERVAL = timedelta(seconds=60)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    device = EasyControls3Instance(entry.data["host"])
+    async def _load_bundle() -> str:
+        return await fetch_bundle(async_get_clientsession(hass), entry.data["host"])
+
+    device = EasyControls3Instance(entry.data["host"], bundle_loader=_load_bundle)
 
     async def _async_update_data():
         try:
